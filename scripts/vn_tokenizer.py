@@ -27,12 +27,30 @@ import sys
 _logger = logging.getLogger('vn_tokenizer')
 
 
-def word_tokenize(algo, model_file_name, model_file_name_pkl, crf_suite, libcrf_path, sentences):
+def word_tokenize(sentences, algo='crf', crf_suite='crfsuite', libcrf_path='/usr/local/lib'):
+    """Tokenizes the words in the given set of sentences
+
+    Something super important here: This function only works for Vietnamese. That was hopefully obvious from the name of
+    of the repo this code is in
+
+    :param sentences: The list of sentences to tokenize
+    :param algo: The algorithm to use. Must be either 'mm' or 'crf'. CRF requires CRFSuite and liblbfgs, see
+    http://www.chokkan.org/software/crfsuite/
+    :param crf_suite: The name of the crfsuite executable.
+    :param libcrf_path: The path to where libcrfsuite is installed
+    :return: A list of all the tokens in the given text
+    """
     # Miscellaneous special characters and punctuation marks.
     punct = [u'!', u',', u'.', u':', u';', u'?']  # TO DO : Add "...".
     quotes = [u'"', u"'"]
     brackets = [u'(', u')', u'[', u']', u'{', u'}']
     mathsyms = [u'%', u'*', u'+', u'-', u'/', u'=', u'>', u'<']
+
+    if algo == 'mm':
+        model_file_name = './model.pkl'
+    elif algo == 'crf':
+        model_file_name = './model.crf'
+        model_file_name_pkl = './model.crf.pkl'
 
     # STEP: Detach punctuation marks attached at the end of words.
     # In general, a period (.) or a comma (,) at end of a word should
@@ -40,7 +58,7 @@ def word_tokenize(algo, model_file_name, model_file_name_pkl, crf_suite, libcrf_
     # Exceptions to check: initials & acronyms e.g. "D. Hằng" and dates.
 
     sents_ = []
-    for sent in sents:
+    for sent in sentences:
         sent_ = []
         for word in sent:
             # First, check if acronym or abbreviation, i.e. Z., Y.Z., X.Y.Z. etc.
@@ -78,7 +96,7 @@ def word_tokenize(algo, model_file_name, model_file_name_pkl, crf_suite, libcrf_
                       u'/', u':', u';', u'=', u'>', u'?']  # u'%'
 
         f = codecs.open(output_file_name, mode='w', encoding='utf-8')
-        sents = []  # Tokenized sentences will be written here.
+        sentences = []  # Tokenized sentences will be written here.
 
         for line in sents_:
             sent = []
@@ -178,7 +196,7 @@ def word_tokenize(algo, model_file_name, model_file_name_pkl, crf_suite, libcrf_
             if len(word) > 0:
                 sent.append('[' + ' '.join(word) + ']')
             if len(sent) > 0:
-                sents.append(sent)
+                sentences.append(sent)
             f.write(' '.join(sent) + '\n')
 
         f.close()
@@ -393,19 +411,12 @@ if __name__ == '__main__':
         input_file_name = sys.argv[1]
         output_file_name = sys.argv[2]
         algo = 'crf'
-        model_file_name = './model.crf'
-        model_file_name_pkl = './model.crf.pkl'
         CRFSUITE = 'crfsuite'
         LIBCRFPATH = "/usr/local/lib/"
 
     if n_args >= 4:
         algo = sys.argv[3]
-        if algo == 'mm':
-            model_file_name = './model.pkl'
-        elif algo == 'crf':
-            model_file_name = './model.crf'
-            model_file_name_pkl = './model.crf.pkl'
-        else:
+        if algo not in ['mm', 'crf']:
             _logger.error("Algorithm '" + algo + "' is invalid. Choose between 'mm' and 'crf' only.")
             exit(1)
         CRFSUITE = 'crfsuite'
@@ -423,10 +434,6 @@ if __name__ == '__main__':
         _logger.info('Input text file "' + input_file_name + '" does not exist. Retry with a valid file name.')
         exit(1)
 
-    if not os.path.isfile(model_file_name):
-        _logger.info('Model file "' + model_file_name + '" does not exist. Retry with a valid file name.')
-        exit(1)
-
     # STEP: Read input file.
     # The file is stored as a list of items, each item is one line.
     # Each item (line) is itself a list of the contents of the line
@@ -438,7 +445,7 @@ if __name__ == '__main__':
         sents.append(line.split())  # Split line on space to get syllables + etc.
     f.close()
 
-    tokens = word_tokenize(algo, model_file_name, model_file_name_pkl, CRFSUITE, LIBCRFPATH, sents)
+    tokens = word_tokenize(sents, algo=algo, crf_suite=CRFSUITE, libcrf_path=LIBCRFPATH)
     with codecs.open(output_file_name, mode='w', encoding='utf-8') as fout:
         fout.write(' '.join(tokens) + '\n')
         sent = []  # Flush sentence buffer.

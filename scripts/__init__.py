@@ -1,0 +1,1 @@
+from thirdparty.Roy_VnTokenizer.scripts.vn_tokenizer import word_tokenize
